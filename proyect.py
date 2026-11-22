@@ -1,136 +1,45 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+import os
+from motores import MotorHaskell, MotorProlog  # Modularidad (Sesión 14)
 
-def evaluar_riesgos():
-    puntos_riesgo = 0
-    alertas = []
-    recomendaciones = []
+def preguntar_opcion(texto: str, opciones: list) -> str:
+    while True:  # Estructura repetitiva (Sesión 13)
+        resp = input(f"{texto} ({'/'.join(opciones)}): ").strip().lower()
+        if resp in opciones:  # Condicional y pertenencia en lista (Sesiones 12 y 13)
+            return resp
+        print(f"  [!] Opcion invalida. Elija: {', '.join(opciones)}")
 
-    # 1. Análisis Eléctrico
-    equipos = combo_equipos.get()
-    proteccion = var_estabilizador.get()
-    cableado_antiguo = var_antiguo.get()
+def main():
+    print("==========================================================")
+    print("  ASISTENTE PREVENTIVO DE RIESGOS (Python + Prolog + Haskell)")
+    print("==========================================================\n")
 
-    if equipos == "Alta (PC Gamer, Estufa, Microondas)" and cableado_antiguo:
-        puntos_riesgo += 40
-        alertas.append("• Sobrecarga severa inminente: alta demanda en cableado con desgaste.")
-        recomendaciones.append("Distribuir las cargas en circuitos independientes y revisar térmicas.")
-    elif equipos == "Alta (PC Gamer, Estufa, Microondas)" and not proteccion:
-        puntos_riesgo += 25
-        alertas.append("• Equipos de alto consumo sin supresor ni estabilizador.")
-        recomendaciones.append("Conectar regulador de voltaje para evitar daños por picos.")
+    # Diccionario para estructurar los datos (Sesión 14)
+    respuestas = {
+        "consumo": preguntar_opcion("1. Nivel de consumo electrico simultaneo", ["bajo", "medio", "alto"]),
+        "antiguo": preguntar_opcion("2. El cableado tiene mas de 10 anos?", ["si", "no"]),
+        "estab":   preguntar_opcion("3. Cuenta con estabilizador o supresor?", ["si", "no"]),
+        "espacio": preguntar_opcion("4. Tipo de ventilacion del ambiente", ["ventilado", "cerrado"]),
+        "humedad": preguntar_opcion("5. Se detecta humedad o filtraciones?", ["si", "no"]),
+        "ausente": preguntar_opcion("6. Quedan equipos encendidos cuando sales?", ["si", "no"])
+    }
 
-    # 2. Análisis Ambiental / Ventilación
-    espacio = combo_espacio.get()
-    humedad = var_humedad.get()
+    print("\n--- Procesando inferencia logica y calculo funcional ---\n")
 
-    if espacio == "Cerrado / Sin ventanas" and humedad:
-        puntos_riesgo += 30
-        alertas.append("• Ambiente propenso a condensación y fallas por sulfatación.")
-        recomendaciones.append("Instalar extractor o deshumidificador para proteger conexiones y salud.")
-    elif espacio == "Cerrado / Sin ventanas":
-        puntos_riesgo += 15
-        recomendaciones.append("Ventilar periódicamente para evitar concentración térmica.")
+    # Instanciación de objetos (Sesión 15)
+    exe_hs = "calculo.exe" if os.name == "nt" else "./calculo"
+    motor_hs = MotorHaskell("calculo.hs", exe_hs)
+    motor_pl = MotorProlog("razonador.pl")
 
-    # 3. Análisis de Accesos y Descuido
-    ausente = var_ausente.get()
-    sin_supervision = var_ninos_mascotas.get()
+    puntaje, nivel = motor_hs.ejecutar(respuestas)  # Desempaquetado de Tupla (Sesión 14)
+    deducciones = motor_pl.ejecutar(respuestas)
 
-    if ausente and equipos != "Baja (Cargadores, Lámparas)":
-        puntos_riesgo += 20
-        alertas.append("• Cargas activas sin presencia de personas en el predio.")
-        recomendaciones.append("Desconectar periféricos y cargas térmicas al salir.")
-
-    if sin_supervision:
-        puntos_riesgo += 15
-        recomendaciones.append("Proteger tomacorrientes a nivel de suelo con tapas de seguridad.")
-
-    # Razonamiento Global
-    txt_resultado.config(state="normal")
-    txt_resultado.delete("1.0", tk.END)
-
-    if puntos_riesgo >= 50:
-        nivel = "CRÍTICO (Acción Inmediata)"
-        color = "#b30000"
-    elif puntos_riesgo >= 25:
-        nivel = "MODERADO (Atención Preventiva)"
-        color = "#d97706"
+    print(f"DIAGNOSTICO GENERAL : {nivel}")
+    print(f"INDICE DE RIESGO    : {puntaje} / 100 puntos\n")
+    print("ANALISIS DEDUCTIVO (Prolog):")
+    if deducciones:
+        print(deducciones)
     else:
-        nivel = "SEGURO (Bajo Control)"
-        color = "#15803d"
+        print("-> No se detectaron combinaciones de riesgo critico.")
 
-    informe = f"DIAGNÓSTICO: {nivel}\nNivel de Vulnerabilidad: {puntos_riesgo}/100\n\n"
-    
-    if alertas:
-        informe += "FACTORES DE RIESGO DETECTADOS:\n" + "\n".join(alertas) + "\n\n"
-    else:
-        informe += "No se identificaron factores críticos de riesgo inmediato.\n\n"
-
-    if recomendaciones:
-        informe += "ACCIONES PREVENTIVAS SUGERIDAS:\n" + "\n".join(f"→ {r}" for r in recomendaciones)
-    else:
-        informe += "→ Mantener los hábitos actuales de inspección."
-
-    txt_resultado.insert(tk.END, informe)
-    lbl_estado.config(text=f"Estado: {nivel}", fg=color)
-    txt_resultado.config(state="disabled")
-
-# Configuración de Ventana
-root = tk.Tk()
-root.title("Monitor Preventivo de Seguridad y Cargas")
-root.geometry("620x680")
-root.resizable(False, False)
-
-frame = ttk.Frame(root, padding="15")
-frame.pack(fill="both", expand=True)
-
-ttk.Label(frame, text="Evaluador Preventivo de Entorno", font=("Segoe UI", 14, "bold")).pack(anchor="w", pady=(0, 10))
-
-# Sección Eléctrica
-lf_elec = ttk.LabelFrame(frame, text=" 1. Estado de Instalación Eléctrica ", padding="10")
-lf_elec.pack(fill="x", pady=5)
-
-ttk.Label(lf_elec, text="Nivel de consumo simultáneo:").grid(row=0, column=0, sticky="w", pady=2)
-combo_equipos = ttk.Combobox(lf_elec, values=["Baja (Cargadores, Lámparas)", "Media (Laptop, TV, Ventilador)", "Alta (PC Gamer, Estufa, Microondas)"], state="readonly", width=35)
-combo_equipos.current(1)
-combo_equipos.grid(row=0, column=1, pady=2, padx=5)
-
-var_estabilizador = tk.BooleanVar()
-chk_estab = ttk.Checkbutton(lf_elec, text="Cuenta con estabilizador / regulador", variable=var_estabilizador)
-chk_estab.grid(row=1, column=0, columnspan=2, sticky="w", pady=2)
-
-var_antiguo = tk.BooleanVar()
-chk_ant = ttk.Checkbutton(lf_elec, text="Cableado o infraestructura con más de 10 años", variable=var_antiguo)
-chk_ant.grid(row=2, column=0, columnspan=2, sticky="w", pady=2)
-
-# Sección Entorno
-lf_entorno = ttk.LabelFrame(frame, text=" 2. Entorno y Hábitos ", padding="10")
-lf_entorno.pack(fill="x", pady=5)
-
-ttk.Label(lf_entorno, text="Tipo de habitación:").grid(row=0, column=0, sticky="w", pady=2)
-combo_espacio = ttk.Combobox(lf_entorno, values=["Ventilación cruzada / Ventanas amplias", "Cerrado / Sin ventanas"], state="readonly", width=35)
-combo_espacio.current(0)
-combo_espacio.grid(row=0, column=1, pady=2, padx=5)
-
-var_humedad = tk.BooleanVar()
-ttk.Checkbutton(lf_entorno, text="Presencia notoria de humedad o filtraciones", variable=var_humedad).grid(row=1, column=0, columnspan=2, sticky="w", pady=2)
-
-var_ausente = tk.BooleanVar()
-ttk.Checkbutton(lf_entorno, text="Equipos operando mientras el lugar queda vacío", variable=var_ausente).grid(row=2, column=0, columnspan=2, sticky="w", pady=2)
-
-var_ninos_mascotas = tk.BooleanVar()
-ttk.Checkbutton(lf_entorno, text="Cables accesibles a ras de piso con tránsito frecuente", variable=var_ninos_mascotas).grid(row=3, column=0, columnspan=2, sticky="w", pady=2)
-
-# Botón Acción
-btn_evaluar = tk.Button(frame, text="Analizar y Razonar Prevención", font=("Segoe UI", 10, "bold"), bg="#0284c7", fg="white", relief="flat", command=evaluar_riesgos, pady=6)
-btn_evaluar.pack(fill="x", pady=12)
-
-# Resultados
-lbl_estado = tk.Label(frame, text="Estado: Pendiente de análisis", font=("Segoe UI", 10, "bold"), fg="#4b5563")
-lbl_estado.pack(anchor="w")
-
-txt_resultado = tk.Text(frame, height=11, font=("Consolas", 9), wrap="word", padx=8, pady=8)
-txt_resultado.pack(fill="both", expand=True, pady=5)
-txt_resultado.config(state="disabled")
-
-root.mainloop()
+if __name__ == "__main__":
+    main()
